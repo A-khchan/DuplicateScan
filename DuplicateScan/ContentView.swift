@@ -11,6 +11,8 @@ import SwiftUI
 struct FileWithID: Identifiable {
     var id = UUID()
     var FileName:String
+    var FileSize:Int64 = 0
+    var FileCreationDate: NSDate?
 }
 
 
@@ -19,13 +21,10 @@ struct ContentView: View {
     @State private var SelectedFolder: String = ""
     @State private var DScanFileManager: FileManager = FileManager()
     @State private var ContentInDir: [String] = []
-    //@State private var FileName: String = ""
     @State private var SelectedFile: String? = nil
-    //@State private var multiSelection = Set<UUID>()
     @State var listOfFileWithID = [
         FileWithID(FileName: "Empty")
     ]
-    //@State var orgPanelURL: URL
     
     var body: some View {
         
@@ -37,22 +36,18 @@ struct ContentView: View {
             HStack {
                 
                 VStack {
-                    List(listOfFileWithID, id: \.id, selection: $SelectedFile) { movie in
-                        Text(movie.FileName)
+                    List(listOfFileWithID, id: \.id, selection: $SelectedFile) { fileWithID in
+                        Text(fileWithID.FileName)
                             .onTapGesture {
-                                self.SelectedFile = movie.FileName
-                                print("file:/" + SelectedFolder + "/" +  movie.FileName)
-                                //var urlwithFilename: URL = URL(string: orgPanelURL + movie.FileName)!
-                                //do {
-                                //    let resource = try urlwithFilename.resourceValues(forKeys: [.fileSizeKey])
-                                //    let fileSize = resource.fileSize!
-                                //    SelectedFile = fileSize.codingKey.stringValue
-                                //} catch {
-                                //    print("error in getting file size")
-                                //}
+                                //Store it to adjust color of selected row
+                                self.SelectedFile = fileWithID.FileName
+                                
+                                print("filePath: \(fileWithID.FileName)")
+                                print("filePath: \(fileWithID.FileSize)")
+                                print("filePath: \(String(describing: fileWithID.FileCreationDate))")
                             }
-                            .listRowBackground(self.SelectedFile == movie.FileName ? Color.blue : Color.white)
-                            .foregroundColor(self.SelectedFile == movie.FileName ? Color.white : Color.black)
+                            .listRowBackground(self.SelectedFile == fileWithID.FileName ? Color.blue : Color.white)
+                            .foregroundColor(self.SelectedFile == fileWithID.FileName ? Color.white : Color.black)
                     }
                 }
                 .frame(minWidth: 0, maxWidth: .infinity)
@@ -69,13 +64,14 @@ struct ContentView: View {
                 let window: NSWindow = NSApp.mainWindow ?? NSWindow()
                 
                 let panel = NSOpenPanel()
-                panel.canChooseFiles = true
+                panel.canChooseFiles = false
                 panel.canChooseDirectories = true
                 panel.allowsMultipleSelection = false
                 panel.isFloatingPanel = true
                 panel.beginSheetModal(for: window) { (result) in
                     if result == NSApplication.ModalResponse.OK {
                         print("panel.urls[0]: \(panel.urls[0])")
+                        //path(percentEncoded:)' is only available in macOS 13.0 or newer
                         print("panel.urls[0].path: \(panel.urls[0].path)")
                         
                         if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: panel.urls[0].path) {
@@ -85,20 +81,21 @@ struct ContentView: View {
                             }
                         }
                         
-                        //SelectedFolder = panel.urls[0].path
-                        //var orgPanelURL = panel.urls[0]
+                        SelectedFolder = panel.urls[0].path
                             
-                        //do {
-                        //    try ContentInDir = DScanFileManager.contentsOfDirectory(atPath: panel.urls[0].path)
-                        //} catch {
-                        //    ContentInDir = []
-                        //}
-                        //listOfFileWithID = []
-                        //for fileOrDir in ContentInDir {
-                        //    listOfFileWithID.append(FileWithID(FileName: fileOrDir))
-                        //}
+                        do {
+                            try ContentInDir = DScanFileManager.contentsOfDirectory(atPath: panel.urls[0].path)
+                        } catch {
+                            ContentInDir = []
+                        }
+                        listOfFileWithID = []
+                        for fileOrDir in ContentInDir {
+                            listOfFileWithID.append(FileWithID(FileName: fileOrDir))
+                        }
                         
-                        //print(ContentInDir)
+                        print(ContentInDir)
+                        
+                        listOfFileWithID = getFileInfoArray(folder: panel.urls[0].path)
                     }
                 }
             }
@@ -112,4 +109,48 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
     }
+}
+
+func getFileInfoArray (folder: String) -> [FileWithID] {
+    var ContentInDir: [String] = []
+    let DScanFileManager: FileManager = FileManager()
+    var listOfFileWithID = [
+        FileWithID(FileName: "Empty")
+    ]
+    var retrievedBytes: Int64 = 0
+    var retrievedCreateDateTime: NSDate?
+    
+    //First, get content of this folder
+    do {
+        try ContentInDir = DScanFileManager.contentsOfDirectory(atPath: folder)
+    } catch {
+        ContentInDir = []
+    }
+    
+    //loop the content and fill up array
+    listOfFileWithID = []
+    for fileOrDir in ContentInDir {
+        if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: folder + "/" + fileOrDir) {
+            
+            if let fileType = fileAttributes[.type] as? FileAttributeType {
+                if fileType == .typeDirectory {
+                    print("Is Directory")
+                    listOfFileWithID += getFileInfoArray(folder: folder + "/" + fileOrDir)
+                } else {
+                    print("Is not Directory")
+                    if let bytes = fileAttributes[.size] as? Int64 {
+                        print("(2)File size is: \(bytes)")
+                        retrievedBytes = bytes
+                    }
+                    if let createDateTime = fileAttributes[.creationDate] as? NSDate {
+                        print("createDateTime is: \(createDateTime)")
+                        retrievedCreateDateTime = createDateTime
+                    }
+                    listOfFileWithID.append(FileWithID(FileName: folder + "/" + fileOrDir, FileSize: retrievedBytes, FileCreationDate: retrievedCreateDateTime))
+                }
+            }
+        }
+    }
+    
+    return listOfFileWithID
 }
