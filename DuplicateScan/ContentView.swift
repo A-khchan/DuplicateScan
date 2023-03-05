@@ -39,13 +39,15 @@ struct ContentView: View {
                 VStack {
                     Toggle(isOn: $isOn) {
                         Text("Show only files with duplication")
+                            .frame(minHeight: 23)
                     }
                     .toggleStyle(.checkbox)
                     
-                    List(sortedListOfFileWithID.filter { $0.DupNumber < 2 && isOn == false ||
+                    List(sortedListOfFileWithID.filter { $0.DupNumber < 2 && $0.DupNumber >= 0 && isOn == false ||
                         $0.DupNumber == 1 && isOn
                     }, id: \.id, selection: $SelectedFile) { fileWithID in
                         HStack {
+                            
                             if fileWithID.DupNumber == 0 {
                                 Image(systemName: "doc")
                                     .imageScale(.large)
@@ -63,20 +65,79 @@ struct ContentView: View {
                                     print("filePath: \(fileWithID.FileName)")
                                     print("filePath: \(fileWithID.FileSize)")
                                     print("filePath: \(String(describing: fileWithID.FileCreationDate))")
+                                    
+                                    SelectedFileForProcess = nil
+                                    
                                 }
                                 
                         }
                         .listRowBackground(self.SelectedFile == fileWithID.FileName ? Color.blue : Color.white)
                         .foregroundColor(self.SelectedFile == fileWithID.FileName ? Color.white : Color.black)
+                        
+                        
                     }
                     //Summary
                     Text("Number of file without duplication: \(sortedListOfFileWithID.filter { $0.DupNumber == 0 }.count)")
+                    
                     Text("Number of file with duplication: \(sortedListOfFileWithID.filter { $0.DupNumber == 1 }.count)")
+                    if let image = NSImage(contentsOf: URL(fileURLWithPath: SelectedFile ?? ""))
+                    {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 300, height: 300, alignment:.center)
+                    } else {
+                        Image(systemName: "photo")
+                            .resizable()
+                            .scaledToFit()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 100, alignment:.center)
+                        
+                    }
+                    
+                    Text("Selected file size: \(sortedListOfFileWithID.filter { $0.FileName == SelectedFile }.reduce(0, { $0 + $1.FileSize}))")
                 }
                 .frame(minWidth: 0, maxWidth: .infinity)
                 
                 VStack {
-                    //Text("\(SelectedFile ?? "N/A")")
+                    HStack {
+                        Text("Duplicated files")
+                            .frame(minHeight: 23)
+                        Button("Delete selected file") {
+                            
+                            
+                                
+                            //Really delete the file
+                            do {
+                                if DScanFileManager.fileExists(atPath: SelectedFileForProcess!) {
+                                    // Delete file
+                                    try DScanFileManager.removeItem(atPath: SelectedFileForProcess!)
+                                    
+                                    if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFileForProcess}) {
+                                        //Update DupNumber to -1 to hidden the file from being displayed
+                                        sortedListOfFileWithID[index].DupNumber = -1
+                                    }
+                                    SelectedFileForProcess = nil
+                                    
+                                    //if all duplicated files are deleted, also update first file's DupNumber to 0 to indicate it has no more duplication.
+                                    if sortedListOfFileWithID.filter({ $0.DupNumber >= 2 && $0.FileSize == selectedSize && $0.FileCreationDate?.timeIntervalSinceReferenceDate == selectedDate.timeIntervalSinceReferenceDate }).count == 0 {
+                                        if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFile}) {
+                                            sortedListOfFileWithID[index].DupNumber = 0
+                                            
+                                         SelectedFile = nil
+                                        }
+                                    }
+                                } else {
+                                    print("File does not exist")
+                                }
+                            } catch  let error as NSError  {
+                                print("Error when deleting the file: \(error)")
+                            }
+                            
+                        }
+                        .disabled(SelectedFileForProcess == nil)
+                    }
+                    
                     List(sortedListOfFileWithID.filter { $0.DupNumber >= 2 && $0.FileSize == selectedSize && $0.FileCreationDate?.timeIntervalSinceReferenceDate == selectedDate.timeIntervalSinceReferenceDate }, id: \.id, selection: $SelectedFileForProcess) { fileWithID in
                         Text(fileWithID.FileName)
                             .onTapGesture {
@@ -89,6 +150,21 @@ struct ContentView: View {
                     Text("Number of duplicated files: \(sortedListOfFileWithID.filter { $0.DupNumber > 1 }.count)")
                     Text("Total size (in bytes) of duplicated files: \(sortedListOfFileWithID.filter { $0.DupNumber > 1 }.reduce(0, { $0 + $1.FileSize}))")
                     
+                    if let image = NSImage(contentsOf: URL(fileURLWithPath: SelectedFileForProcess ?? ""))
+                    {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 300, height: 300, alignment:.center)
+                    } else {
+                        Image(systemName: "photo")
+                            .resizable()
+                            .scaledToFit()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 100, alignment:.center)
+                    }
+                    
+                    Text("Selected file size: \(sortedListOfFileWithID.filter { $0.FileName == SelectedFileForProcess }.reduce(0, { $0 + $1.FileSize}))")
                 }
                 .frame(minWidth: 0, maxWidth: .infinity)
             }
@@ -166,6 +242,11 @@ struct ContentView: View {
                             i += 1
                         }
                         
+                        SelectedFile = nil
+                        SelectedFileForProcess = nil
+                        selectedSize = 0
+                        
+                        /*
                         print("****Sorted List is:")
                         for item in sortedListOfFileWithID {
                             print("Name: \(item.FileName)")
@@ -173,6 +254,7 @@ struct ContentView: View {
                             print("Create Date: \(String(describing: item.FileCreationDate))")
                             print("DupNumber: \(item.DupNumber)")
                         }
+                         */
                         //print(sortedListOfFileWithID)
                     }
                 }
