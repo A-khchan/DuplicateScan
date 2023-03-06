@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+import AVKit
 
 struct FileWithID: Identifiable {
     var id = UUID()
@@ -14,6 +14,23 @@ struct FileWithID: Identifiable {
     var FileSize:Int64 = 0
     var FileCreationDate: NSDate?
     var DupNumber:Int = 0 //0 means no duplication, 1 means first file in duplicated files, duplication means same file size and same creation date.
+}
+
+struct PlayerView: NSViewRepresentable {
+    @Binding var player: AVPlayer
+
+    func updateNSView(_ NSView: NSView, context: NSViewRepresentableContext<PlayerView>) {
+        guard let view = NSView as? AVPlayerView else {
+            debugPrint("unexpected view")
+            return
+        }
+
+        view.player = player
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        return AVPlayerView(frame: .zero)
+    }
 }
 
 
@@ -31,6 +48,10 @@ struct ContentView: View {
     ]
     @State var sortedListOfFileWithID: [FileWithID] = []
     @State private var isOn = false
+    @State private var Dup1:Int = 0
+    @State private var Dup2:Int = 0
+    @State private var player: AVPlayer = AVPlayer()
+    @State private var playerRHS: AVPlayer = AVPlayer()
     
     var body: some View {
         
@@ -48,6 +69,7 @@ struct ContentView: View {
                     }, id: \.id, selection: $SelectedFile) { fileWithID in
                         HStack {
                             
+                            
                             if fileWithID.DupNumber == 0 {
                                 Image(systemName: "doc")
                                     .imageScale(.large)
@@ -55,16 +77,25 @@ struct ContentView: View {
                                 Image(systemName: "doc.on.doc")
                                     .imageScale(.large)
                             }
+                            //A file on left side list is clicked
                             Text(fileWithID.FileName)
                                 .onTapGesture {
+                                    
                                     //Store it to adjust color of selected row
                                     self.SelectedFile = fileWithID.FileName
                                     self.selectedSize = fileWithID.FileSize
                                     self.selectedDate = fileWithID.FileCreationDate ?? Date() as NSDate
                                     
+                                    //print("Convert string to path: \(URL(fileURLWithPath: SelectedFile!))")
+                                    
                                     print("filePath: \(fileWithID.FileName)")
                                     print("filePath: \(fileWithID.FileSize)")
                                     print("filePath: \(String(describing: fileWithID.FileCreationDate))")
+                                    
+                                    //Prepare player (AVPlayer) for PlayerView to display the video playback
+                                    let asset = AVAsset(url: URL(fileURLWithPath: SelectedFile!))
+                                    let playerItem = AVPlayerItem(asset: asset)
+                                    player.replaceCurrentItem(with: playerItem)
                                     
                                     SelectedFileForProcess = nil
                                     
@@ -87,12 +118,17 @@ struct ContentView: View {
                             .scaledToFit()
                             .frame(width: 300, height: 300, alignment:.center)
                     } else {
-                        Image(systemName: "photo")
-                            .resizable()
-                            .scaledToFit()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 100, alignment:.center)
                         
+                        //Video player
+                        if SelectedFile != nil && URL(fileURLWithPath: SelectedFile!).pathExtension == "mov" {
+                            PlayerView(player: $player)
+                        } else {
+                            Image(systemName: "photo")
+                                .resizable()
+                                .scaledToFit()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 100, alignment:.center)
+                        }
                     }
                     
                     Text("Selected file size: \(sortedListOfFileWithID.filter { $0.FileName == SelectedFile }.reduce(0, { $0 + $1.FileSize}))")
@@ -101,9 +137,29 @@ struct ContentView: View {
                 
                 VStack {
                     HStack {
+                        Button("Swap files") {
+                            if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFile}) {
+                                Dup1 = sortedListOfFileWithID[index].DupNumber
+                            }
+                            if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFileForProcess}) {
+                                Dup2 = sortedListOfFileWithID[index].DupNumber
+                            }
+                            //Update DupNumber
+                            if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFile}) {
+                                sortedListOfFileWithID[index].DupNumber = Dup2
+                            }
+                            if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFileForProcess}) {
+                                sortedListOfFileWithID[index].DupNumber = Dup1
+                            }
+                            //After swap, list refreshed and result in no selection
+                            SelectedFile = nil
+                            SelectedFileForProcess = nil
+                        }
+                        .disabled(SelectedFile == nil || SelectedFileForProcess == nil)
+                        
                         Text("Duplicated files")
                             .frame(minHeight: 23)
-                        Button("Delete selected file") {
+                        Button("Delete the selected file in below") {
                             
                             
                                 
@@ -143,6 +199,12 @@ struct ContentView: View {
                             .onTapGesture {
                                 //
                                 self.SelectedFileForProcess = fileWithID.FileName
+                                
+                                //Prepare playerRHS (AVPlayer) for PlayerView to display the video playback
+                                let asset = AVAsset(url: URL(fileURLWithPath: SelectedFileForProcess!))
+                                let playerItem = AVPlayerItem(asset: asset)
+                                playerRHS.replaceCurrentItem(with: playerItem)
+                                
                             }
                             .listRowBackground(self.SelectedFileForProcess == fileWithID.FileName ? Color.blue : Color.white)
                             .foregroundColor(self.SelectedFileForProcess == fileWithID.FileName ? Color.white : Color.black)
@@ -157,11 +219,17 @@ struct ContentView: View {
                             .scaledToFit()
                             .frame(width: 300, height: 300, alignment:.center)
                     } else {
-                        Image(systemName: "photo")
-                            .resizable()
-                            .scaledToFit()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 100, alignment:.center)
+                        
+                        //Video player RHS
+                        if SelectedFileForProcess != nil && URL(fileURLWithPath: SelectedFileForProcess!).pathExtension == "mov" {
+                            PlayerView(player: $playerRHS)
+                        } else {
+                            Image(systemName: "photo")
+                                .resizable()
+                                .scaledToFit()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 100, alignment:.center)
+                        }
                     }
                     
                     Text("Selected file size: \(sortedListOfFileWithID.filter { $0.FileName == SelectedFileForProcess }.reduce(0, { $0 + $1.FileSize}))")
