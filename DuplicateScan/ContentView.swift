@@ -52,23 +52,32 @@ struct ContentView: View {
     @State private var Dup2:Int = 0
     @State private var player: AVPlayer = AVPlayer()
     @State private var playerRHS: AVPlayer = AVPlayer()
+    @State private var minSize: String = "0"
     
     var body: some View {
         
         VStack {
             HStack {
                 VStack {
-                    Toggle(isOn: $isOn) {
-                        Text("Show only files with duplication")
-                            .frame(minHeight: 23)
+                    HStack {
+                        Toggle(isOn: $isOn) {
+                            Text("Show only files with duplication")
+                                .frame(minHeight: 23)
+                        }
+                        .toggleStyle(.checkbox)
+                        //.frame(minWidth: 500)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        Label("Min. size (MB)", systemImage: "line.3.horizontal.decrease.circle")
+                        TextField("", text: $minSize)
+                            .frame(maxWidth: 40)
+                            
                     }
-                    .toggleStyle(.checkbox)
                     
-                    List(sortedListOfFileWithID.filter { $0.DupNumber < 2 && $0.DupNumber >= 0 && isOn == false ||
-                        $0.DupNumber == 1 && isOn
+                    List(sortedListOfFileWithID.filter { $0.FileSize >= (Int(minSize) ?? 0)*1024*1024 && ($0.DupNumber < 2 && $0.DupNumber >= 0 && isOn == false ||
+                        $0.DupNumber == 1 && isOn)
                     }, id: \.id, selection: $SelectedFile) { fileWithID in
                         HStack {
-                            
                             
                             if fileWithID.DupNumber == 0 {
                                 Image(systemName: "doc")
@@ -117,7 +126,7 @@ struct ContentView: View {
                     } else {
                         
                         //Video player if it has ext. mov
-                        if SelectedFile != nil && URL(fileURLWithPath: SelectedFile!).pathExtension == "mov" {
+                        if SelectedFile != nil && URL(fileURLWithPath: SelectedFile!).pathExtension.lowercased() == "mov" {
                             PlayerView(player: $player)
                         } else {
                             Image(systemName: "photo")
@@ -155,9 +164,11 @@ struct ContentView: View {
                             SelectedFileForProcess = nil
                         }
                         .disabled(SelectedFile == nil || SelectedFileForProcess == nil)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         
                         Text("Duplicated files")
                             .frame(minHeight: 23)
+                            .frame(maxWidth: .infinity, alignment: .center)
                         Button("Delete the below selected file") {
                                 
                             //Really delete the file upon button clicked
@@ -189,6 +200,7 @@ struct ContentView: View {
                             
                         }
                         .disabled(SelectedFileForProcess == nil)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     
                     //Show the list of duplicated files
@@ -219,7 +231,7 @@ struct ContentView: View {
                     } else {
                         
                         //Video player RHS
-                        if SelectedFileForProcess != nil && URL(fileURLWithPath: SelectedFileForProcess!).pathExtension == "mov" {
+                        if SelectedFileForProcess != nil && URL(fileURLWithPath: SelectedFileForProcess!).pathExtension.lowercased() == "mov" {
                             PlayerView(player: $playerRHS)
                         } else {
                             Image(systemName: "photo")
