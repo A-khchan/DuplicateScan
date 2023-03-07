@@ -81,16 +81,17 @@ struct ContentView: View {
                             Text(fileWithID.FileName)
                                 .onTapGesture {
                                     
-                                    //Store it to adjust color of selected row
+                                    //Store SelectedFile for adjusting color of selected row
                                     self.SelectedFile = fileWithID.FileName
                                     self.selectedSize = fileWithID.FileSize
                                     self.selectedDate = fileWithID.FileCreationDate ?? Date() as NSDate
                                     
+                                    //Example to convert string to path
                                     //print("Convert string to path: \(URL(fileURLWithPath: SelectedFile!))")
                                     
-                                    print("filePath: \(fileWithID.FileName)")
-                                    print("filePath: \(fileWithID.FileSize)")
-                                    print("filePath: \(String(describing: fileWithID.FileCreationDate))")
+                                    //print("filePath: \(fileWithID.FileName)")
+                                    //print("filePath: \(fileWithID.FileSize)")
+                                    //print("filePath: \(String(describing: fileWithID.FileCreationDate))")
                                     
                                     //Prepare player (AVPlayer) for PlayerView to display the video playback
                                     let asset = AVAsset(url: URL(fileURLWithPath: SelectedFile!))
@@ -98,28 +99,24 @@ struct ContentView: View {
                                     player.replaceCurrentItem(with: playerItem)
                                     
                                     SelectedFileForProcess = nil
-                                    
                                 }
-                                
                         }
                         .listRowBackground(self.SelectedFile == fileWithID.FileName ? Color.blue : Color.white)
                         .foregroundColor(self.SelectedFile == fileWithID.FileName ? Color.white : Color.black)
-                        
-                        
                     }
                     //Summary
                     Text("Number of file without duplication: \(sortedListOfFileWithID.filter { $0.DupNumber == 0 }.count)")
                     
                     Text("Number of file with duplication: \(sortedListOfFileWithID.filter { $0.DupNumber == 1 }.count)")
                     if let image = NSImage(contentsOf: URL(fileURLWithPath: SelectedFile ?? ""))
-                    {
+                    {   //if loading an image is successful, display it
                         Image(nsImage: image)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 300, height: 300, alignment:.center)
                     } else {
                         
-                        //Video player
+                        //Video player if it has ext. mov
                         if SelectedFile != nil && URL(fileURLWithPath: SelectedFile!).pathExtension == "mov" {
                             PlayerView(player: $player)
                         } else {
@@ -135,16 +132,18 @@ struct ContentView: View {
                 }
                 .frame(minWidth: 0, maxWidth: .infinity)
                 
+                //Right hand side column
                 VStack {
                     HStack {
                         Button("Swap files") {
+                            //Button is clicked
                             if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFile}) {
                                 Dup1 = sortedListOfFileWithID[index].DupNumber
                             }
                             if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFileForProcess}) {
                                 Dup2 = sortedListOfFileWithID[index].DupNumber
                             }
-                            //Update DupNumber
+                            //Update DupNumber in array
                             if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFile}) {
                                 sortedListOfFileWithID[index].DupNumber = Dup2
                             }
@@ -159,18 +158,16 @@ struct ContentView: View {
                         
                         Text("Duplicated files")
                             .frame(minHeight: 23)
-                        Button("Delete the selected file in below") {
-                            
-                            
+                        Button("Delete the below selected file") {
                                 
-                            //Really delete the file
+                            //Really delete the file upon button clicked
                             do {
                                 if DScanFileManager.fileExists(atPath: SelectedFileForProcess!) {
                                     // Delete file
                                     try DScanFileManager.removeItem(atPath: SelectedFileForProcess!)
                                     
                                     if let index = sortedListOfFileWithID.firstIndex(where: {$0.FileName == SelectedFileForProcess}) {
-                                        //Update DupNumber to -1 to hidden the file from being displayed
+                                        //Update DupNumber to -1 to hide the file from being displayed
                                         sortedListOfFileWithID[index].DupNumber = -1
                                     }
                                     SelectedFileForProcess = nil
@@ -194,6 +191,7 @@ struct ContentView: View {
                         .disabled(SelectedFileForProcess == nil)
                     }
                     
+                    //Show the list of duplicated files
                     List(sortedListOfFileWithID.filter { $0.DupNumber >= 2 && $0.FileSize == selectedSize && $0.FileCreationDate?.timeIntervalSinceReferenceDate == selectedDate.timeIntervalSinceReferenceDate }, id: \.id, selection: $SelectedFileForProcess) { fileWithID in
                         Text(fileWithID.FileName)
                             .onTapGesture {
@@ -237,7 +235,7 @@ struct ContentView: View {
                 .frame(minWidth: 0, maxWidth: .infinity)
             }
             Picker(selection: .constant(1), label: Text("Folder")) {
-                Text(SelectedFolder ).tag(1)
+                Text(SelectedFolder).tag(1)
             }
             Button("Choose folder") {
                 let window: NSWindow = NSApp.mainWindow ?? NSWindow()
@@ -249,16 +247,9 @@ struct ContentView: View {
                 panel.isFloatingPanel = true
                 panel.beginSheetModal(for: window) { (result) in
                     if result == NSApplication.ModalResponse.OK {
-                        print("panel.urls[0]: \(panel.urls[0])")
+                        //print("panel.urls[0]: \(panel.urls[0])")
                         //path(percentEncoded:)' is only available in macOS 13.0 or newer
-                        print("panel.urls[0].path: \(panel.urls[0].path)")
-                        
-                        if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: panel.urls[0].path) {
-                        
-                            if let bytes = fileAttributes[.size] as? Int64 {
-                                print("File size is: \(bytes)")
-                            }
-                        }
+                        //print("panel.urls[0].path: \(panel.urls[0].path)")
                         
                         SelectedFolder = panel.urls[0].path
                             
@@ -272,7 +263,7 @@ struct ContentView: View {
                             listOfFileWithID.append(FileWithID(FileName: fileOrDir))
                         }
                         
-                        print(ContentInDir)
+                        //print(ContentInDir)
                         
                         listOfFileWithID = getFileInfoArray(folder: panel.urls[0].path)
                         sortedListOfFileWithID = listOfFileWithID.sorted(by: ) { (lhs, rhs) in
@@ -288,6 +279,7 @@ struct ContentView: View {
                             
                         }
                         
+                        //Check if any duplication, and then update DupNumber
                         var prevSize:Int64 = 0
                         var prevDate:NSDate = Date() as NSDate
                         var i = 0
@@ -362,16 +354,16 @@ func getFileInfoArray (folder: String) -> [FileWithID] {
             
             if let fileType = fileAttributes[.type] as? FileAttributeType {
                 if fileType == .typeDirectory {
-                    print("Is Directory")
+                    //print("Is Directory")
                     listOfFileWithID += getFileInfoArray(folder: folder + "/" + fileOrDir)
                 } else {
-                    print("Is not Directory")
+                    //print("Is not Directory")
                     if let bytes = fileAttributes[.size] as? Int64 {
-                        print("(2)File size is: \(bytes)")
+                        //print("(2)File size is: \(bytes)")
                         retrievedBytes = bytes
                     }
                     if let createDateTime = fileAttributes[.creationDate] as? NSDate {
-                        print("createDateTime is: \(createDateTime)")
+                        //print("createDateTime is: \(createDateTime)")
                         retrievedCreateDateTime = createDateTime
                     }
                     listOfFileWithID.append(FileWithID(FileName: folder + "/" + fileOrDir, FileSize: retrievedBytes, FileCreationDate: retrievedCreateDateTime))
