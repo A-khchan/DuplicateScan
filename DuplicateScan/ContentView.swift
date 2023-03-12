@@ -383,8 +383,10 @@ func getFileInfoArray (folder: String) -> [FileWithID] {
                         //print("(2)File size is: \(bytes)")
                         retrievedBytes = bytes
                     }
-                    if let createDateTime = fileAttributes[.creationDate] as? NSDate {
-                        //print("createDateTime is: \(createDateTime)")
+                    if let createDateTime = //fileAttributes[.creationDate] as? NSDate {
+                        //Try using modified date instead
+                        fileAttributes[.modificationDate] as? NSDate {
+                            //print("createDateTime is: \(createDateTime)")
                         retrievedCreateDateTime = createDateTime
                     }
                     listOfFileWithID.append(FileWithID(FileName: folder + "/" + fileOrDir, FileSize: retrievedBytes, FileCreationDate: retrievedCreateDateTime))
