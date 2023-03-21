@@ -38,7 +38,6 @@ struct ContentView: View {
     
     @State private var SelectedFolder: String = ""
     @State private var DScanFileManager: FileManager = FileManager()
-    @State private var ContentInDir: [String] = []
     @State private var SelectedFile: String? = nil
     @State private var selectedSize: Int64 = 0
     @State private var selectedDate: NSDate = Date() as NSDate
@@ -273,18 +272,6 @@ struct ContentView: View {
                         //print("panel.urls[0].path: \(panel.urls[0].path)")
                         
                         SelectedFolder = panel.urls[0].path
-                            
-                        do {
-                            try ContentInDir = DScanFileManager.contentsOfDirectory(atPath: panel.urls[0].path)
-                        } catch {
-                            ContentInDir = []
-                        }
-                        listOfFileWithID = []
-                        for fileOrDir in ContentInDir {
-                            listOfFileWithID.append(FileWithID(FileName: fileOrDir))
-                        }
-                        
-                        //print(ContentInDir)
                         
                         listOfFileWithID = getFileInfoArray(folder: panel.urls[0].path)
                         sortedListOfFileWithID = listOfFileWithID.sorted(by: ) { (lhs, rhs) in
