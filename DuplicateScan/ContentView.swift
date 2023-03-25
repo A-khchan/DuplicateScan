@@ -125,7 +125,8 @@ struct ContentView: View {
                             Image(nsImage: image)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 300, height: 300, alignment:.center)
+                                //.frame(width: 300, height: 300, alignment:.center)
+                                .frame(maxHeight: 300, alignment: .center)
                         } else {
                             
                             //Video player if it has ext. mov or mp4
@@ -140,7 +141,7 @@ struct ContentView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(height: 100, alignment:.center)
+                                    .frame(height: 60, alignment:.center)
                             }
                         }
                         
@@ -235,7 +236,8 @@ struct ContentView: View {
                             Image(nsImage: image)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 300, height: 300, alignment:.center)
+                                //.frame(width: 300, height: 300, alignment:.center)
+                                .frame(maxHeight: 300, alignment: .center)
                         } else {
                             
                             //Video player RHS
@@ -249,7 +251,7 @@ struct ContentView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(height: 100, alignment:.center)
+                                    .frame(height: 60, alignment:.center)
                             }
                         }
                         
