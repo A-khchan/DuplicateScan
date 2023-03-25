@@ -45,6 +45,7 @@
 		49AA75FE29AAEB5F00AFC51A /* DuplicateScanUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DuplicateScanUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49AA760229AAEB6000AFC51A /* DuplicateScanUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateScanUITests.swift; sourceTree = "<group>"; };
 		49AA760429AAEB6000AFC51A /* DuplicateScanUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateScanUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		49CF5CF029CC215F005B85CD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +96,7 @@
 		49AA75E529AAEB5D00AFC51A /* DuplicateScan */ = {
 			isa = PBXGroup;
 			children = (
+				49CF5CF029CC215F005B85CD /* Info.plist */,
 				49AA75E629AAEB5D00AFC51A /* DuplicateScanApp.swift */,
 				49AA75E829AAEB5D00AFC51A /* ContentView.swift */,
 				49AA75EA29AAEB5F00AFC51A /* Assets.xcassets */,
@@ -424,6 +426,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DuplicateScan/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -451,6 +454,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DuplicateScan/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

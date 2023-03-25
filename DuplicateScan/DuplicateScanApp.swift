@@ -13,5 +13,9 @@ struct DuplicateScanApp: App {
         WindowGroup {
             ContentView()
         }
+        WindowGroup("Viewer") { // other scene
+            Viewer()
+        }
+        .handlesExternalEvents(matching: Set(arrayLiteral: "*"))
     }
 }
