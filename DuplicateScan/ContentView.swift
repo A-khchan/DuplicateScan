@@ -295,11 +295,17 @@ struct ContentView: View {
                                 print("Complete loading all sub-folders: \(progress)")
                                 updateProgress(increment: 0.6 - progress)
                                 
-                                let sortProgress = 0.2 / (Double(listOfFileWithID.count)*Double(listOfFileWithID.count+1)/2.0)
+                                //With n items, number of sorting comparison need is (n-1)+(n-2)+...+1 = n(n-1)/2
+                                //let sortProgress = 0.2 / (Double(listOfFileWithID.count)*Double(listOfFileWithID.count-1)/2.0)
+                                
+                                //var sortCount = 0
                                 
                                 sortedListOfFileWithID = listOfFileWithID.sorted(by: ) { (lhs, rhs) in
+                                    
+                                    //updateProgress(increment: sortProgress)
+                                    //sortCount += 1
+                                    
                                     if lhs.fileModificationDate == rhs.fileModificationDate {
-                                        updateProgress(increment: sortProgress)
                                         return lhs.fileSize < rhs.fileSize
                                     }
                                     
@@ -312,7 +318,8 @@ struct ContentView: View {
                                 }
                                 updateProgress(increment: 0.8 - progress)
                                 print("Complete sorting: \(progress)")
-                                
+                                //print("sortCount: \(sortCount)")
+                                print("listOfFileWithID.count: \(listOfFileWithID.count)")
                                 
                                 //Check if any duplication, and then update dupNumber
                                 var prevSize:Int64 = 0
@@ -368,10 +375,10 @@ struct ContentView: View {
             if isLoading {
                 Rectangle()
                     .opacity(0.75)
-                RoundedRectangle(cornerRadius: 25, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(.white)
                     .opacity(1.0)
-                    .frame(maxWidth: 500, maxHeight: 150)
+                    .frame(maxWidth: 500, maxHeight: 120)
                 VStack {
                     Text("Loading...")
                     ProgressView(value: progress)
@@ -451,7 +458,7 @@ struct ContentView: View {
                     isLoading = false
                 }
             }
-            print("Progress: \(progress)")
+            //print("Progress: \(progress)")
         }
     }
 
