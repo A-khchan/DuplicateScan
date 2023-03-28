@@ -45,7 +45,7 @@ struct ContentView: View {
     @State var listOfFileWithID = [
         FileWithID(fileName: "Empty")
     ]
-    @State var sortedListOfFileWithID: [FileWithID] = []
+    @State private var sortedListOfFileWithID: [FileWithID] = []
     @State private var isOn = false
     @State private var dup1:Int = 0
     @State private var dup2:Int = 0
@@ -53,6 +53,10 @@ struct ContentView: View {
     @State private var playerRHS: AVPlayer = AVPlayer()
     @State private var minSize: String = "0"
     @State private var progress: Double = 0
+    @State private var totalCount: Double = 0
+    @State private var progressPV: Double = 0
+    @State private var totalCountPV: Double = 0
+    @State private var fileCount: Double = 0
     @Environment(\.openURL) var openURL
     @State private var isLoading: Bool = false
     
@@ -77,8 +81,7 @@ struct ContentView: View {
                         }
                         .frame(minHeight: 25)
                         
-                        List(sortedListOfFileWithID.filter { $0.fileSize >= (Int(minSize) ?? 0)*1024*1024 && ($0.dupNumber < 2 && $0.dupNumber >= 0 && isOn == false ||
-                                                                                                              $0.dupNumber == 1 && isOn)
+                        List(sortedListOfFileWithID.filter { $0.fileSize >= (Int(minSize) ?? 0)*1024*1024 && ($0.dupNumber < 2 && $0.dupNumber >= 0 && isOn == false || $0.dupNumber == 1 && isOn)
                         }, id: \.id, selection: $selectedFile) { fileWithID in
                             HStack {
                                 
@@ -100,10 +103,6 @@ struct ContentView: View {
                                         
                                         //Example to convert string to path
                                         //print("Convert string to path: \(URL(fileURLWithPath: selectedFile!))")
-                                        
-                                        //print("filePath: \(fileWithID.fileName)")
-                                        //print("filePath: \(fileWithID.fileSize)")
-                                        //print("filePath: \(String(describing: fileWithID.fileModificationDate))")
                                         
                                         //Prepare player (AVPlayer) for PlayerView to display the video playback
                                         let asset = AVAsset(url: URL(fileURLWithPath: selectedFile!))
@@ -282,28 +281,42 @@ struct ContentView: View {
                             selectedFolder = panel.urls[0].path
                             
                             //The below has to cope with update of URL scheme in project DuplicateScan->(targets)DuplicateScan->Info->URL Scheme.
-                            /*
+                            /* Open a new window example
                              if let url = URL(string: "DuplicateScanApp://Viewer") {
                              openURL(url)
                              }*/
                             
                             progress = 0.0
+                            totalCount = 0.0
+                            progressPV = 0.0
+                            totalCountPV = 0.0
+                            fileCount = 0.0
                             
                             Task.detached {
                                 
                                 listOfFileWithID = await getFileInfoArray(folder: panel.urls[0].path, portion: 0.6)
                                 print("Complete loading all sub-folders: \(progress)")
-                                updateProgress(increment: 0.6 - progress)
                                 
                                 //With n items, number of sorting comparison need is (n-1)+(n-2)+...+1 = n(n-1)/2
-                                //let sortProgress = 0.2 / (Double(listOfFileWithID.count)*Double(listOfFileWithID.count-1)/2.0)
+                                //But since the complexity is lower due to smarter method used in Array.sorted. So, n*log(n) is used. Experiment shows multiply by 5 has better result.
+                                let sortProgress = fileCount / (5.0*Double(listOfFileWithID.count)*log(Double(listOfFileWithID.count)))
                                 
-                                //var sortCount = 0
-                                
+                                var sortCount = 0
+                                    
                                 sortedListOfFileWithID = listOfFileWithID.sorted(by: ) { (lhs, rhs) in
                                     
-                                    //updateProgress(increment: sortProgress)
-                                    //sortCount += 1
+                                    sortCount += 1
+                                    progress += sortProgress
+                                    //print("In sort, progress is: \(progress)")
+                                    //print("In sort, (progress - progressPV)/totalCountPV is: \((progress - progressPV)/totalCountPV)")
+                                    //print("In sort, sortCount is: \(sortCount)")
+                                    //print("In sort, progress - progressPV is: \(progress - progressPV)")
+                                    //Limit the call to main.sync to have better performance
+                                    if (progress - progressPV)/totalCountPV > 0.03 {
+                                        DispatchQueue.main.sync {
+                                            progressPV = progress
+                                        }
+                                    }
                                     
                                     if lhs.fileModificationDate == rhs.fileModificationDate {
                                         return lhs.fileSize < rhs.fileSize
@@ -316,16 +329,16 @@ struct ContentView: View {
                                     < R.timeIntervalSinceReferenceDate
                                     
                                 }
-                                updateProgress(increment: 0.8 - progress)
-                                print("Complete sorting: \(progress)")
+                                
+                                //print("Complete sorting: \(progress)")
                                 //print("sortCount: \(sortCount)")
-                                print("listOfFileWithID.count: \(listOfFileWithID.count)")
+                                //print("listOfFileWithID.count: \(listOfFileWithID.count)")
                                 
                                 //Check if any duplication, and then update dupNumber
                                 var prevSize:Int64 = 0
                                 var prevDate:NSDate = Date() as NSDate
                                 var i = 0
-                                let dupProgress = (1.0 - progress) / Double(sortedListOfFileWithID.count)
+                                let dupProgress = (totalCountPV - progressPV) / Double(sortedListOfFileWithID.count)
                                 for item in sortedListOfFileWithID {
                                     //print("Name: \(item.fileName)")
                                     //print("Size: \(item.fileSize) ")
@@ -344,11 +357,21 @@ struct ContentView: View {
                                     prevDate = item.fileModificationDate ?? Date() as NSDate
                                     i += 1
                                     
-                                    updateProgress(increment: dupProgress)
+                                    progress += dupProgress
+                                    if (progress - progressPV)/totalCountPV > 0.03 {
+                                        DispatchQueue.main.sync {
+                                            progressPV = progress
+                                        }
+                                    }
                                 }
-                                updateProgress(increment: 1.0 - progress)
-                                print("Complete assign dupNumber: \(progress)")
+                                //print("Complete assign dupNumber: \(progress)")
                                 
+                                DispatchQueue.main.async {
+                                    progressPV = totalCountPV
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                        isLoading = false
+                                    }
+                                }
                                 
                                 selectedFile = nil
                                 selectedFileForProcess = nil
@@ -363,7 +386,7 @@ struct ContentView: View {
                              print("Create Date: \(String(describing: item.fileModificationDate))")
                              print("dupNumber: \(item.dupNumber)")
                              }
-                             */
+                            */
                             //print(sortedListOfFileWithID)
                         }
                     }
@@ -380,10 +403,11 @@ struct ContentView: View {
                     .opacity(1.0)
                     .frame(maxWidth: 500, maxHeight: 120)
                 VStack {
-                    Text("Loading...")
-                    ProgressView(value: progress)
+                    //Text("Loading...")
+                    ProgressView("Loading...", value: progressPV, total: totalCountPV)
                         .progressViewStyle(LinearProgressViewStyle())
                         .frame(maxWidth: 400)
+                    Text("\(Int(progressPV)) out of \(Int(totalCountPV))")
                 }
             }
         }
@@ -406,8 +430,9 @@ struct ContentView: View {
             ContentInDir = []
         }
         
-        let increment = portion/Double(ContentInDir.count)
-        let progressPostFolder = progress + increment
+        var i = 0
+        
+        totalCount += Double(ContentInDir.count)
         
         //loop the content and fill up array
         listOfFileWithID = []
@@ -418,17 +443,12 @@ struct ContentView: View {
                 if let fileType = fileAttributes[.type] as? FileAttributeType {
                     if fileType == .typeDirectory {
                         //print("Is Directory")
-                        listOfFileWithID += getFileInfoArray(folder: folder + "/" + fileOrDir, portion: portion/Double(ContentInDir.count))
                         
-                        DispatchQueue.main.async {
-                            if progress < progressPostFolder {
-                                progress = progressPostFolder
-                            }
-                        }
+                        listOfFileWithID += getFileInfoArray(folder: folder + "/" + fileOrDir, portion: portion/Double(ContentInDir.count))
                         
                     } else {
                         //print("Is not Directory")
-                        updateProgress(increment: increment)
+                        fileCount += 1
                         
                         if let bytes = fileAttributes[.size] as? Int64 {
                             //print("(2)File size is: \(bytes)")
@@ -442,26 +462,25 @@ struct ContentView: View {
                         }
                         listOfFileWithID.append(FileWithID(fileName: folder + "/" + fileOrDir, fileSize: retrievedBytes, fileModificationDate: retrievedModificationDateTime))
                     }
+                    
+                    progress += 1.0
+                    
                 }
             }
+            
+            if (progress - progressPV)/totalCount > 0.06 {
+                DispatchQueue.main.sync {
+                    progressPV = progress
+                    totalCountPV = totalCount + fileCount
+                }
+            }
+            
+            i += 1
         }
         
         return listOfFileWithID
     }
     
-    func updateProgress(increment: Double) {
-        DispatchQueue.main.async {
-            progress += increment
-            if progress > 1.0 {
-                progress = 1.0
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    isLoading = false
-                }
-            }
-            //print("Progress: \(progress)")
-        }
-    }
-
 }
 
 struct ContentView_Previews: PreviewProvider {
