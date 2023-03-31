@@ -105,6 +105,7 @@ struct ContentView: View {
                                         //print("Convert string to path: \(URL(fileURLWithPath: selectedFile!))")
                                         
                                         //Prepare player (AVPlayer) for PlayerView to display the video playback
+                                        //For unknown reason, if the following three lines move to just before PlayerView(player: $player), there will be a complier error of can't determine type within reasonable time.
                                         let asset = AVAsset(url: URL(fileURLWithPath: selectedFile!))
                                         let playerItem = AVPlayerItem(asset: asset)
                                         player.replaceCurrentItem(with: playerItem)
@@ -258,8 +259,18 @@ struct ContentView: View {
                     }
                     .frame(minWidth: 0, maxWidth: .infinity)
                 }
-                Picker(selection: .constant(1), label: Text("Folder")) {
-                    Text(selectedFolder).tag(1)
+                //Picker(selection: .constant(1), label: Text("Folder")) {
+                //    Text(selectedFolder).tag(1)
+                //}
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(.black)
+                        .opacity(0.6)
+                        .frame(maxWidth: .infinity, maxHeight: 20)
+                    Text("Folder: \(selectedFolder)")
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
                 }
                 Button("Choose folder") {
                     
@@ -294,7 +305,7 @@ struct ContentView: View {
                             
                             Task.detached {
                                 
-                                listOfFileWithID = await getFileInfoArray(folder: panel.urls[0].path, portion: 0.6)
+                                listOfFileWithID = await getFileInfoArray(folder: panel.urls[0].path)
                                 print("Complete loading all sub-folders: \(progress)")
                                 
                                 //With n items, number of sorting comparison need is (n-1)+(n-2)+...+1 = n(n-1)/2
@@ -311,7 +322,7 @@ struct ContentView: View {
                                     //print("In sort, (progress - progressPV)/totalCountPV is: \((progress - progressPV)/totalCountPV)")
                                     //print("In sort, sortCount is: \(sortCount)")
                                     //print("In sort, progress - progressPV is: \(progress - progressPV)")
-                                    //Limit the call to main.sync to have better performance
+                                    //Limit the calls to main.sync to have better performance
                                     if (progress - progressPV)/totalCountPV > 0.03 {
                                         DispatchQueue.main.sync {
                                             progressPV = progress
@@ -407,14 +418,14 @@ struct ContentView: View {
                     ProgressView("Loading...", value: progressPV, total: totalCountPV)
                         .progressViewStyle(LinearProgressViewStyle())
                         .frame(maxWidth: 400)
-                    Text("\(Int(progressPV)) out of \(Int(totalCountPV))")
+                    //Text("\(Int(progressPV)) out of \(Int(totalCountPV))")
                 }
             }
         }
     }
 
 
-    func getFileInfoArray (folder: String, portion: Double) -> [FileWithID] {
+    func getFileInfoArray (folder: String) -> [FileWithID] {
         var ContentInDir: [String] = []
         let dScanFileManager: FileManager = FileManager()
         var listOfFileWithID = [
@@ -444,7 +455,7 @@ struct ContentView: View {
                     if fileType == .typeDirectory {
                         //print("Is Directory")
                         
-                        listOfFileWithID += getFileInfoArray(folder: folder + "/" + fileOrDir, portion: portion/Double(ContentInDir.count))
+                        listOfFileWithID += getFileInfoArray(folder: folder + "/" + fileOrDir)
                         
                     } else {
                         //print("Is not Directory")
@@ -469,6 +480,7 @@ struct ContentView: View {
             }
             
             if (progress - progressPV)/totalCount > 0.06 {
+                //The below action force the update to *PV run in main queue, same as UI, and use sync to ensure the UI will get updated
                 DispatchQueue.main.sync {
                     progressPV = progress
                     totalCountPV = totalCount + fileCount
