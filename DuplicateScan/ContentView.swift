@@ -59,6 +59,67 @@ struct ContentView: View {
     @State private var fileCount: Double = 0
     @Environment(\.openURL) var openURL
     @State private var isLoading: Bool = false
+    @State private var imageHeight1:CGFloat = 60
+    @State private var imageHeight2:CGFloat = 60
+    
+    var selectedFolderFileListView: some View {
+        List(sortedListOfFileWithID.filter { $0.fileSize >= (Int(minSize) ?? 0)*1024*1024 && ($0.dupNumber < 2 && $0.dupNumber >= 0 && isOn == false || $0.dupNumber == 1 && isOn)
+        }, id: \.id, selection: $selectedFile) { fileWithID in
+            HStack {
+                
+                if fileWithID.dupNumber == 0 {
+                    Image(systemName: "doc")
+                        .imageScale(.large)
+                } else {
+                    Image(systemName: "doc.on.doc")
+                        .imageScale(.large)
+                }
+                //A file on left side list is clicked
+                Text(fileWithID.fileName)
+                    .onTapGesture {
+                        
+                        //Store selectedFile for adjusting color of selected row
+                        self.selectedFile = fileWithID.fileName
+                        self.selectedSize = fileWithID.fileSize
+                        self.selectedDate = fileWithID.fileModificationDate ?? Date() as NSDate
+                        
+                        //Example to convert string to path
+                        //print("Convert string to path: \(URL(fileURLWithPath: selectedFile!))")
+                        
+                        //Prepare player (AVPlayer) for PlayerView to display the video playback
+                        //For unknown reason, if the following three lines move to just before PlayerView(player: $player), there will be a complier error of can't determine type within reasonable time.
+                        let asset = AVAsset(url: URL(fileURLWithPath: selectedFile!))
+                        let playerItem = AVPlayerItem(asset: asset)
+                        player.replaceCurrentItem(with: playerItem)
+                        
+                        selectedFileForProcess = nil
+                    }
+            }
+            .listRowBackground(self.selectedFile == fileWithID.fileName ? Color.blue : Color.white)
+            .foregroundColor(self.selectedFile == fileWithID.fileName ? Color.white : Color.black)
+        }
+        .animation(.linear(duration: 0.8), value: imageHeight1)
+    }
+    
+    var duplicatedFileListView: some View {
+        //Show the list of duplicated files
+        List(sortedListOfFileWithID.filter { $0.dupNumber >= 2 && $0.fileSize == selectedSize && $0.fileModificationDate?.timeIntervalSinceReferenceDate == selectedDate.timeIntervalSinceReferenceDate }, id: \.id, selection: $selectedFileForProcess) { fileWithID in
+            Text(fileWithID.fileName)
+                .onTapGesture {
+                    //
+                    self.selectedFileForProcess = fileWithID.fileName
+                    
+                    //Prepare playerRHS (AVPlayer) for PlayerView to display the video playback
+                    let asset = AVAsset(url: URL(fileURLWithPath: selectedFileForProcess!))
+                    let playerItem = AVPlayerItem(asset: asset)
+                    playerRHS.replaceCurrentItem(with: playerItem)
+                    
+                }
+                .listRowBackground(self.selectedFileForProcess == fileWithID.fileName ? Color.blue : Color.white)
+                .foregroundColor(self.selectedFileForProcess == fileWithID.fileName ? Color.white : Color.black)
+        }
+        .animation(.linear(duration: 0.8), value: imageHeight2)
+    }
     
     var body: some View {
         ZStack {
@@ -81,41 +142,8 @@ struct ContentView: View {
                         }
                         .frame(minHeight: 25)
                         
-                        List(sortedListOfFileWithID.filter { $0.fileSize >= (Int(minSize) ?? 0)*1024*1024 && ($0.dupNumber < 2 && $0.dupNumber >= 0 && isOn == false || $0.dupNumber == 1 && isOn)
-                        }, id: \.id, selection: $selectedFile) { fileWithID in
-                            HStack {
-                                
-                                if fileWithID.dupNumber == 0 {
-                                    Image(systemName: "doc")
-                                        .imageScale(.large)
-                                } else {
-                                    Image(systemName: "doc.on.doc")
-                                        .imageScale(.large)
-                                }
-                                //A file on left side list is clicked
-                                Text(fileWithID.fileName)
-                                    .onTapGesture {
-                                        
-                                        //Store selectedFile for adjusting color of selected row
-                                        self.selectedFile = fileWithID.fileName
-                                        self.selectedSize = fileWithID.fileSize
-                                        self.selectedDate = fileWithID.fileModificationDate ?? Date() as NSDate
-                                        
-                                        //Example to convert string to path
-                                        //print("Convert string to path: \(URL(fileURLWithPath: selectedFile!))")
-                                        
-                                        //Prepare player (AVPlayer) for PlayerView to display the video playback
-                                        //For unknown reason, if the following three lines move to just before PlayerView(player: $player), there will be a complier error of can't determine type within reasonable time.
-                                        let asset = AVAsset(url: URL(fileURLWithPath: selectedFile!))
-                                        let playerItem = AVPlayerItem(asset: asset)
-                                        player.replaceCurrentItem(with: playerItem)
-                                        
-                                        selectedFileForProcess = nil
-                                    }
-                            }
-                            .listRowBackground(self.selectedFile == fileWithID.fileName ? Color.blue : Color.white)
-                            .foregroundColor(self.selectedFile == fileWithID.fileName ? Color.white : Color.black)
-                        }
+                        selectedFolderFileListView
+                        
                         //Summary
                         Text("Number of file without duplication: \(sortedListOfFileWithID.filter { $0.dupNumber == 0 }.count)")
                         
@@ -126,7 +154,15 @@ struct ContentView: View {
                                 .resizable()
                                 .scaledToFit()
                                 //.frame(width: 300, height: 300, alignment:.center)
-                                .frame(maxHeight: 300, alignment: .center)
+                                .frame(maxHeight: imageHeight1, alignment: .center)
+                                .onAppear {
+                                    withAnimation(  //.spring()
+                                        .linear(duration: 0.8)
+                                        //.repeatForever(autoreverses: false)
+                                        ) {
+                                        self.imageHeight1 = 300
+                                    }
+                                }
                         } else {
                             
                             //Video player if it has ext. mov or mp4
@@ -136,12 +172,29 @@ struct ContentView: View {
                              */
                             if selectedFile != nil && ["mov", "mp4"].contains(URL(fileURLWithPath: selectedFile!).pathExtension.lowercased()) {
                                 PlayerView(player: $player)
+                                    .frame(maxHeight: imageHeight1)
+                                    .onAppear {
+                                        withAnimation(  //.spring()
+                                            .linear(duration: 0.8)
+                                            //.repeatForever(autoreverses: false)
+                                        ) {
+                                            self.imageHeight1 = 300
+                                        }
+                                    }
                             } else {
                                 Image(systemName: "photo")
                                     .resizable()
                                     .scaledToFit()
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(height: 60, alignment:.center)
+                                    .frame(maxHeight: imageHeight1, alignment:.center)
+                                    .onAppear {
+                                        withAnimation(  //.spring()
+                                            .linear(duration: 0.8)
+                                            //.repeatForever(autoreverses: false)
+                                            ) {
+                                            self.imageHeight1 = 60
+                                        }
+                                    }
                             }
                         }
                         
@@ -212,22 +265,8 @@ struct ContentView: View {
                         }
                         .frame(minHeight: 25)
                         
-                        //Show the list of duplicated files
-                        List(sortedListOfFileWithID.filter { $0.dupNumber >= 2 && $0.fileSize == selectedSize && $0.fileModificationDate?.timeIntervalSinceReferenceDate == selectedDate.timeIntervalSinceReferenceDate }, id: \.id, selection: $selectedFileForProcess) { fileWithID in
-                            Text(fileWithID.fileName)
-                                .onTapGesture {
-                                    //
-                                    self.selectedFileForProcess = fileWithID.fileName
-                                    
-                                    //Prepare playerRHS (AVPlayer) for PlayerView to display the video playback
-                                    let asset = AVAsset(url: URL(fileURLWithPath: selectedFileForProcess!))
-                                    let playerItem = AVPlayerItem(asset: asset)
-                                    playerRHS.replaceCurrentItem(with: playerItem)
-                                    
-                                }
-                                .listRowBackground(self.selectedFileForProcess == fileWithID.fileName ? Color.blue : Color.white)
-                                .foregroundColor(self.selectedFileForProcess == fileWithID.fileName ? Color.white : Color.black)
-                        }
+                        duplicatedFileListView
+                        
                         Text("Number of duplicated files: \(sortedListOfFileWithID.filter { $0.dupNumber > 1 }.count)")
                         Text("Total size (in bytes) of duplicated files: \(sortedListOfFileWithID.filter { $0.dupNumber > 1 }.reduce(0, { $0 + $1.fileSize}))")
                         
@@ -237,7 +276,15 @@ struct ContentView: View {
                                 .resizable()
                                 .scaledToFit()
                                 //.frame(width: 300, height: 300, alignment:.center)
-                                .frame(maxHeight: 300, alignment: .center)
+                                .frame(maxHeight: imageHeight2, alignment: .center)
+                                .onAppear {
+                                    withAnimation(  //.spring()
+                                        .linear(duration: 0.8)
+                                        //.repeatForever(autoreverses: false)
+                                        ) {
+                                        self.imageHeight2 = 300
+                                    }
+                                }
                         } else {
                             
                             //Video player RHS
@@ -246,12 +293,29 @@ struct ContentView: View {
                              */
                             if selectedFileForProcess != nil && ["mov","mp4"].contains(URL(fileURLWithPath: selectedFileForProcess!).pathExtension.lowercased()) {
                                 PlayerView(player: $playerRHS)
+                                    .frame(maxHeight: imageHeight2)
+                                    .onAppear {
+                                        withAnimation(  //.spring()
+                                            .linear(duration: 0.8)
+                                            //.repeatForever(autoreverses: false)
+                                            ) {
+                                            self.imageHeight2 = 300
+                                        }
+                                    }
                             } else {
                                 Image(systemName: "photo")
                                     .resizable()
                                     .scaledToFit()
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(height: 60, alignment:.center)
+                                    .frame(maxHeight: imageHeight2, alignment:.center)
+                                    .onAppear {
+                                        withAnimation(  //.spring()
+                                            .linear(duration: 0.8)
+                                            //.repeatForever(autoreverses: false)
+                                            ) {
+                                            self.imageHeight2 = 60
+                                        }
+                                    }
                             }
                         }
                         
