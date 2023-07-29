@@ -1,1 +1,1 @@
-This is a MacOS App. It enables to identify duplicated files on your disk. You could preview it, and delete the duplicated one to free up space.
+This is a MacOS App. It enables you to identify duplicated files on your disk. You could preview the files, ensure they are duplicated, and delete the duplicated one to free up space.
